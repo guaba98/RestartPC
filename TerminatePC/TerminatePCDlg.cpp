@@ -1,5 +1,5 @@
-
-// TerminatePCDlg.cpp : ±¸Çö ÆÄÀÏ
+ï»¿
+// TerminatePCDlg.cpp : êµ¬í˜„ íŒŒì¼
 //
 
 #include "stdafx.h"
@@ -7,27 +7,36 @@
 #include "TerminatePCDlg.h"
 #include "afxdialogex.h"
 
+#include <winsock2.h>
+#include <iphlpapi.h>
+#include <icmpapi.h>
+#include <ws2tcpip.h>  // inet_pton í•¨ìˆ˜ê°€ í¬í•¨ëœ í—¤ë”
+#pragma comment(lib, "iphlpapi.lib")
+#pragma comment(lib, "ws2_32.lib")
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
 
+static _TCHAR *_gszL1Label[2] = { _T("Date/Time"), _T("Detail System Log") };
+static int _gnLColumnWidth[2] = { 150, 250 };
 
-// ÀÀ¿ë ÇÁ·Î±×·¥ Á¤º¸¿¡ »ç¿ëµÇ´Â CAboutDlg ´ëÈ­ »óÀÚÀÔ´Ï´Ù.
+// ì‘ìš© í”„ë¡œê·¸ë¨ ì •ë³´ì— ì‚¬ìš©ë˜ëŠ” CAboutDlg ëŒ€í™” ìƒìì…ë‹ˆë‹¤.
 
 class CAboutDlg : public CDialogEx
 {
 public:
 	CAboutDlg();
 
-// ´ëÈ­ »óÀÚ µ¥ÀÌÅÍÀÔ´Ï´Ù.
+// ëŒ€í™” ìƒì ë°ì´í„°ì…ë‹ˆë‹¤.
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_ABOUTBOX };
 #endif
 
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV Áö¿øÀÔ´Ï´Ù.
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV ì§€ì›ì…ë‹ˆë‹¤.
 
-// ±¸ÇöÀÔ´Ï´Ù.
+// êµ¬í˜„ì…ë‹ˆë‹¤.
 protected:
 	DECLARE_MESSAGE_MAP()
 };
@@ -45,7 +54,7 @@ BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 
-// CTerminatePCDlg ´ëÈ­ »óÀÚ
+// CTerminatePCDlg ëŒ€í™” ìƒì
 
 
 
@@ -58,24 +67,26 @@ CTerminatePCDlg::CTerminatePCDlg(CWnd* pParent /*=NULL*/)
 void CTerminatePCDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_LIST1, m_ListLog);
 }
 
 BEGIN_MESSAGE_MAP(CTerminatePCDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_BN_CLICKED(IDC_BTN_PING_TEST, &CTerminatePCDlg::OnBnClickedBtnPingTest)
 END_MESSAGE_MAP()
 
 
-// CTerminatePCDlg ¸Ş½ÃÁö Ã³¸®±â
+// CTerminatePCDlg ë©”ì‹œì§€ ì²˜ë¦¬ê¸°
 
 BOOL CTerminatePCDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
 
-	// ½Ã½ºÅÛ ¸Ş´º¿¡ "Á¤º¸..." ¸Ş´º Ç×¸ñÀ» Ãß°¡ÇÕ´Ï´Ù.
+	// ì‹œìŠ¤í…œ ë©”ë‰´ì— "ì •ë³´..." ë©”ë‰´ í•­ëª©ì„ ì¶”ê°€í•©ë‹ˆë‹¤.
 
-	// IDM_ABOUTBOX´Â ½Ã½ºÅÛ ¸í·É ¹üÀ§¿¡ ÀÖ¾î¾ß ÇÕ´Ï´Ù.
+	// IDM_ABOUTBOXëŠ” ì‹œìŠ¤í…œ ëª…ë ¹ ë²”ìœ„ì— ìˆì–´ì•¼ í•©ë‹ˆë‹¤.
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
 	ASSERT(IDM_ABOUTBOX < 0xF000);
 
@@ -93,14 +104,25 @@ BOOL CTerminatePCDlg::OnInitDialog()
 		}
 	}
 
-	// ÀÌ ´ëÈ­ »óÀÚÀÇ ¾ÆÀÌÄÜÀ» ¼³Á¤ÇÕ´Ï´Ù.  ÀÀ¿ë ÇÁ·Î±×·¥ÀÇ ÁÖ Ã¢ÀÌ ´ëÈ­ »óÀÚ°¡ ¾Æ´Ò °æ¿ì¿¡´Â
-	//  ÇÁ·¹ÀÓ¿öÅ©°¡ ÀÌ ÀÛ¾÷À» ÀÚµ¿À¸·Î ¼öÇàÇÕ´Ï´Ù.
-	SetIcon(m_hIcon, TRUE);			// Å« ¾ÆÀÌÄÜÀ» ¼³Á¤ÇÕ´Ï´Ù.
-	SetIcon(m_hIcon, FALSE);		// ÀÛÀº ¾ÆÀÌÄÜÀ» ¼³Á¤ÇÕ´Ï´Ù.
+	// ì´ ëŒ€í™” ìƒìì˜ ì•„ì´ì½˜ì„ ì„¤ì •í•©ë‹ˆë‹¤.  ì‘ìš© í”„ë¡œê·¸ë¨ì˜ ì£¼ ì°½ì´ ëŒ€í™” ìƒìê°€ ì•„ë‹ ê²½ìš°ì—ëŠ”
+	//  í”„ë ˆì„ì›Œí¬ê°€ ì´ ì‘ì—…ì„ ìë™ìœ¼ë¡œ ìˆ˜í–‰í•©ë‹ˆë‹¤.
+	SetIcon(m_hIcon, TRUE);			// í° ì•„ì´ì½˜ì„ ì„¤ì •í•©ë‹ˆë‹¤.
+	SetIcon(m_hIcon, FALSE);		// ì‘ì€ ì•„ì´ì½˜ì„ ì„¤ì •í•©ë‹ˆë‹¤.
 
-	// TODO: ¿©±â¿¡ Ãß°¡ ÃÊ±âÈ­ ÀÛ¾÷À» Ãß°¡ÇÕ´Ï´Ù.
+	// TODO: ì—¬ê¸°ì— ì¶”ê°€ ì´ˆê¸°í™” ì‘ì—…ì„ ì¶”ê°€í•©ë‹ˆë‹¤.
+	m_ListCtrlfont.CreatePointFont(100, _T("ë§‘ì€ ê³ ë”•"));
+	m_ListLog.SetFont(&m_ListCtrlfont);
 
-	return TRUE;  // Æ÷Ä¿½º¸¦ ÄÁÆ®·Ñ¿¡ ¼³Á¤ÇÏÁö ¾ÊÀ¸¸é TRUE¸¦ ¹İÈ¯ÇÕ´Ï´Ù.
+	m_ListLog.SetExtendedStyle(LVS_EX_FLATSB | LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+	for (int i = 0; i < 2; i++)
+	{
+		m_ListLog.InsertColumn(i, _gszL1Label[i], LVCFMT_CENTER, _gnLColumnWidth[i]);
+	}
+
+
+
+
+	return TRUE;  // í¬ì»¤ìŠ¤ë¥¼ ì»¨íŠ¸ë¡¤ì— ì„¤ì •í•˜ì§€ ì•Šìœ¼ë©´ TRUEë¥¼ ë°˜í™˜í•©ë‹ˆë‹¤.
 }
 
 void CTerminatePCDlg::OnSysCommand(UINT nID, LPARAM lParam)
@@ -116,19 +138,19 @@ void CTerminatePCDlg::OnSysCommand(UINT nID, LPARAM lParam)
 	}
 }
 
-// ´ëÈ­ »óÀÚ¿¡ ÃÖ¼ÒÈ­ ´ÜÃß¸¦ Ãß°¡ÇÒ °æ¿ì ¾ÆÀÌÄÜÀ» ±×¸®·Á¸é
-//  ¾Æ·¡ ÄÚµå°¡ ÇÊ¿äÇÕ´Ï´Ù.  ¹®¼­/ºä ¸ğµ¨À» »ç¿ëÇÏ´Â MFC ÀÀ¿ë ÇÁ·Î±×·¥ÀÇ °æ¿ì¿¡´Â
-//  ÇÁ·¹ÀÓ¿öÅ©¿¡¼­ ÀÌ ÀÛ¾÷À» ÀÚµ¿À¸·Î ¼öÇàÇÕ´Ï´Ù.
+// ëŒ€í™” ìƒìì— ìµœì†Œí™” ë‹¨ì¶”ë¥¼ ì¶”ê°€í•  ê²½ìš° ì•„ì´ì½˜ì„ ê·¸ë¦¬ë ¤ë©´
+//  ì•„ë˜ ì½”ë“œê°€ í•„ìš”í•©ë‹ˆë‹¤.  ë¬¸ì„œ/ë·° ëª¨ë¸ì„ ì‚¬ìš©í•˜ëŠ” MFC ì‘ìš© í”„ë¡œê·¸ë¨ì˜ ê²½ìš°ì—ëŠ”
+//  í”„ë ˆì„ì›Œí¬ì—ì„œ ì´ ì‘ì—…ì„ ìë™ìœ¼ë¡œ ìˆ˜í–‰í•©ë‹ˆë‹¤.
 
 void CTerminatePCDlg::OnPaint()
 {
 	if (IsIconic())
 	{
-		CPaintDC dc(this); // ±×¸®±â¸¦ À§ÇÑ µğ¹ÙÀÌ½º ÄÁÅØ½ºÆ®ÀÔ´Ï´Ù.
+		CPaintDC dc(this); // ê·¸ë¦¬ê¸°ë¥¼ ìœ„í•œ ë””ë°”ì´ìŠ¤ ì»¨í…ìŠ¤íŠ¸ì…ë‹ˆë‹¤.
 
 		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
 
-		// Å¬¶óÀÌ¾ğÆ® »ç°¢Çü¿¡¼­ ¾ÆÀÌÄÜÀ» °¡¿îµ¥¿¡ ¸ÂÃä´Ï´Ù.
+		// í´ë¼ì´ì–¸íŠ¸ ì‚¬ê°í˜•ì—ì„œ ì•„ì´ì½˜ì„ ê°€ìš´ë°ì— ë§ì¶¥ë‹ˆë‹¤.
 		int cxIcon = GetSystemMetrics(SM_CXICON);
 		int cyIcon = GetSystemMetrics(SM_CYICON);
 		CRect rect;
@@ -136,7 +158,7 @@ void CTerminatePCDlg::OnPaint()
 		int x = (rect.Width() - cxIcon + 1) / 2;
 		int y = (rect.Height() - cyIcon + 1) / 2;
 
-		// ¾ÆÀÌÄÜÀ» ±×¸³´Ï´Ù.
+		// ì•„ì´ì½˜ì„ ê·¸ë¦½ë‹ˆë‹¤.
 		dc.DrawIcon(x, y, m_hIcon);
 	}
 	else
@@ -145,10 +167,138 @@ void CTerminatePCDlg::OnPaint()
 	}
 }
 
-// »ç¿ëÀÚ°¡ ÃÖ¼ÒÈ­µÈ Ã¢À» ²ô´Â µ¿¾È¿¡ Ä¿¼­°¡ Ç¥½ÃµÇµµ·Ï ½Ã½ºÅÛ¿¡¼­
-//  ÀÌ ÇÔ¼ö¸¦ È£ÃâÇÕ´Ï´Ù.
+// ì‚¬ìš©ìê°€ ìµœì†Œí™”ëœ ì°½ì„ ë„ëŠ” ë™ì•ˆì— ì»¤ì„œê°€ í‘œì‹œë˜ë„ë¡ ì‹œìŠ¤í…œì—ì„œ
+//  ì´ í•¨ìˆ˜ë¥¼ í˜¸ì¶œí•©ë‹ˆë‹¤.
 HCURSOR CTerminatePCDlg::OnQueryDragIcon()
 {
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+BOOL CTerminatePCDlg::CheckPing()
+{
+	BOOL bChkInternet;
+	int nMaxTime = 10;
+	char* SendData = "Check TCP/IP";
+	CString StrLog;
+
+	HANDLE hIcmpFile;
+	DWORD dwRetVal;
+	LPVOID ReplyBuffer;
+	DWORD ReplySize;
+	struct sockaddr_in dest;
+	PICMP_ECHO_REPLY pEchoReply;
+
+	// ICMP í•¸ë“¤ ìƒì„±
+	hIcmpFile = IcmpCreateFile();
+	if (hIcmpFile == INVALID_HANDLE_VALUE)
+	{
+		AfxMessageBox(_T("IcmpCreateFile ì‹¤íŒ¨"), MB_OK);
+		return FALSE;
+	}
+
+	// IP ì£¼ì†Œ ë³€í™˜ (inet_pton ì‚¬ìš©)
+	memset(&dest, 0, sizeof(dest));
+	dest.sin_family = AF_INET;  // IPv4
+	if (inet_pton(AF_INET, "192.168.1.201", &(dest.sin_addr)) != 1)
+	{
+		AfxMessageBox(_T("inet_pton ì‹¤íŒ¨"), MB_OK);
+		IcmpCloseHandle(hIcmpFile);
+		return FALSE;
+	}
+
+	// ReplyBuffer í• ë‹¹
+	ReplySize = sizeof(ICMP_ECHO_REPLY) + sizeof(SendData);
+	ReplyBuffer = (VOID*)malloc(ReplySize);
+	if (ReplyBuffer == NULL)
+	{
+		AfxMessageBox(_T("ë©”ëª¨ë¦¬ í• ë‹¹ ì‹¤íŒ¨"), MB_OK);
+		IcmpCloseHandle(hIcmpFile);
+		return FALSE;
+	}
+
+	while (nMaxTime > 0)
+	{
+		// Ping ë³´ë‚´ê¸°
+		bChkInternet = IcmpSendEcho(
+			hIcmpFile,
+			dest.sin_addr.s_addr,  // ë³€í™˜ëœ IP ì£¼ì†Œ ì‚¬ìš©
+			SendData,
+			(WORD)strlen(SendData),
+			NULL,
+			ReplyBuffer,
+			ReplySize,
+			1000);  // íƒ€ì„ì•„ì›ƒ 1ì´ˆ
+
+		pEchoReply = (PICMP_ECHO_REPLY)ReplyBuffer;
+
+		if (bChkInternet)
+		{
+			// Ping ì„±ê³µ ì‹œ ê²°ê³¼ ì¶œë ¥
+			StrLog.Format(_T("ë°”ì´íŠ¸=%d ì‹œê°„<%lums TTL=%d\n"),
+				pEchoReply->DataSize,
+				pEchoReply->RoundTripTime,
+				pEchoReply->Options.Ttl);
+		}
+		else
+		{
+			// Ping ì‹¤íŒ¨ ì‹œ ì˜¤ë¥˜ ì½”ë“œ ì¶œë ¥
+			DWORD dwError = GetLastError();  // ì—ëŸ¬ ì½”ë“œ ê°€ì ¸ì˜¤ê¸°
+			StrLog.Format(_T("Ping ì‹¤íŒ¨: ì˜¤ë¥˜ ì½”ë“œ %lu\n"), dwError);
+		}
+
+		AddtoSystemLogList(StrLog, false);
+
+		Sleep(1000);  // 1ì´ˆì— í•œ ë²ˆì”© Ping ì‹¤í–‰
+		nMaxTime--;
+	}
+
+	// í•¸ë“¤ ë° ë©”ëª¨ë¦¬ í•´ì œ
+	free(ReplyBuffer);
+	IcmpCloseHandle(hIcmpFile);
+
+	return TRUE;
+}
+
+
+void CTerminatePCDlg::OnBnClickedBtnPingTest()
+{
+	// TODO: ì—¬ê¸°ì— ì»¨íŠ¸ë¡¤ ì•Œë¦¼ ì²˜ë¦¬ê¸° ì½”ë“œë¥¼ ì¶”ê°€í•©ë‹ˆë‹¤.
+	CheckPing();
+}
+
+void CTerminatePCDlg::AddtoSystemLogList(CString strData, int nLogName)
+{
+	WriteSystemAlarmLogtoLogList(strData, nLogName);
+}
+
+void CTerminatePCDlg::WriteSystemAlarmLogtoLogList(CString strData, int nLogName /*0: SystemLog, 1: AlarmLog*/)
+{
+	CString strTime, strWriteLog;
+	CTime time = CTime::GetCurrentTime();
+	strTime = time.Format(_T("[%Y/%m/%d] [%H:%M:%S]"));
+
+	strWriteLog.Format(_T("%s	%s"), strTime, strData);
+
+	if (strData == _T(""))
+	{
+		return;
+	}
+
+
+	if (nLogName == 0)
+	{
+		int nNum = m_ListLog.GetItemCount();
+		CString strTemp;
+
+		m_ListLog.InsertItem(nNum, NULL);
+		m_ListLog.SetItemText(nNum, 0, strTime);
+
+		strTemp.Format(_T("%s"), strData);
+		m_ListLog.SetItemText(nNum, 1, strTemp);
+
+
+		if (nNum == 1000) {
+			m_ListLog.DeleteAllItems();
+		}
+	}
+}

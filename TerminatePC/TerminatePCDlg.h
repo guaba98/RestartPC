@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "afxcmn.h"
 
 
 // CTerminatePCDlg 대화 상자
@@ -30,5 +31,12 @@ protected:
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
+	BOOL CheckPing();
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnBnClickedBtnPingTest();
+	CListCtrl m_ListLog;
+	CFont m_ListCtrlfont;
+	void AddtoSystemLogList(CString strData, int nLogName);
+	void WriteSystemAlarmLogtoLogList(CString strData, int nLogName /*0: SystemLog, 1: AlarmLog*/);
 };
